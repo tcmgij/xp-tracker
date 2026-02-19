@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>XP Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f5f4f1;
+            --surface: #ffffff;
+            --surface-2: #f0efe9;
+            --border: #e8e6de;
+            --text: #1a1917;
+            --text-2: #6b6860;
+            --text-3: #a8a59e;
+            --accent: #1a1917;
+            --accent-light: #e8e6de;
+            --success: #3a7d44;
+            --success-light: #eaf3eb;
+            --danger: #c0392b;
+            --tab-h: 72px;
+            --radius: 14px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+            color: var(--text);
+        }
+
+        /* ── SCROLLABLE CONTENT ── */
+        .view {
+            display: none;
+            padding: 20px 16px;
+            max-width: 560px;
+            margin: 0 auto;
+            padding-top: 24px;
+        }
+        .view.active { display: block; }
+
+        /* ── BOTTOM NAV ── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: flex-start;
+            padding-top: 8px;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 4px 0;
+            transition: opacity 0.15s;
+        }
+
+        .nav-icon {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: var(--text-3);
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.15s;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            color: var(--text-3);
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            transition: color 0.15s;
+        }
+
+        .nav-item.active .nav-icon svg { stroke: var(--text); }
+        .nav-item.active .nav-label { color: var(--text); }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 18px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        .card-body { padding: 16px 18px; }
+
+        /* ── TODAY HEADER ── */
+        .today-hero {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 20px 18px;
+            margin-bottom: 12px;
+        }
+
+        .today-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .today-date {
+            font-size: 12px;
+            color: var(--text-3);
+            font-weight: 400;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+
+        .today-xp {
+            font-family: 'DM Mono', monospace;
+            font-size: 44px;
+            font-weight: 500;
+            line-height: 1;
+            color: var(--text);
+            letter-spacing: -1px;
+        }
+
+        .today-xp-label {
+            font-size: 13px;
+            color: var(--text-3);
+            margin-top: 2px;
+        }
+
+        .streak-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: var(--surface-2);
+            border-radius: 10px;
+            padding: 10px 14px;
+        }
+
+        .streak-num {
+            font-family: 'DM Mono', monospace;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .streak-label {
+            font-size: 10px;
+            color: var(--text-3);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        /* ── PROGRESS BAR ── */
+        .progress-wrap {
+            margin-top: 4px;
+        }
+
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .progress-label { font-size: 12px; color: var(--text-3); }
+        .progress-pct { font-size: 12px; color: var(--text-2); font-weight: 500; font-family: 'DM Mono', monospace; }
+
+        .progress-track {
+            height: 6px;
+            background: var(--surface-2);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--text);
+            border-radius: 99px;
+            transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ── COMPARISON PILL ── */
+        .comparison {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 99px;
+        }
+        .comparison-val.up { color: var(--success); background: var(--success-light); }
+        .comparison-val.down { color: var(--danger); background: #fdecea; }
+        .comparison-val.neutral { color: var(--text-2); background: var(--surface-2); }
+
+        /* ── CATEGORY SECTION ── */
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin: 20px 0 8px 2px;
+        }
+
+        /* ── BEHAVIOR ROW ── */
+        .behavior-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        .behavior-row:last-child { border-bottom: none; }
+
+        .behavior-name {
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--text);
+            flex: 1;
+        }
+
+        .behavior-pts {
+            font-size: 12px;
+            color: var(--text-3);
+            font-family: 'DM Mono', monospace;
+            margin-right: 14px;
+        }
+
+        /* ── LOG BUTTON ── */
+        .log-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .log-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-3);
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke 0.2s;
+        }
+
+        .log-btn:not(:disabled):hover {
+            border-color: var(--text);
+        }
+
+        .log-btn.logged {
+            background: var(--text);
+            border-color: var(--text);
+        }
+
+        .log-btn.logged svg { stroke: white; }
+        .log-btn.logged { cursor: default; }
+
+        /* celebrate animation */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.35); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        .log-btn.celebrate { animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* ── ANALYTICS ── */
+        .records-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 16px 18px;
+        }
+
+        .record-cell {
+            text-align: center;
+            padding: 12px 8px;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+        }
+
+        .record-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .record-sub {
+            font-size: 9px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .record-date {
+            font-size: 10px;
+            color: var(--text-3);
+            margin-top: 3px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        /* ── TAB SWITCHER ── */
+        .tab-row {
+            display: flex;
+            gap: 6px;
+            padding: 16px 18px 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 4px;
+            background: var(--surface-2);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-3);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s;
+        }
+
+        .tab-btn.active {
+            background: var(--text);
+            color: white;
+        }
+
+        /* ── BAR CHART ── */
+        .chart-area {
+            padding: 20px 18px 8px;
+        }
+
+        .bars-wrap {
+            display: flex;
+            align-items: flex-end;
+            gap: 5px;
+            height: 140px;
+        }
+
+        .bar-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .bar-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            color: var(--text-3);
+            margin-bottom: 3px;
+        }
+
+        .bar-fill {
+            width: 100%;
+            background: var(--text);
+            border-radius: 3px 3px 0 0;
+            min-height: 2px;
+            transition: height 0.5s ease;
+        }
+
+        .bar-fill.today-bar { background: var(--text); opacity: 0.5; }
+
+        .bar-labels {
+            display: flex;
+            gap: 5px;
+            padding: 0 18px 16px;
+        }
+
+        .bar-label {
+            flex: 1;
+            text-align: center;
+            font-size: 9px;
+            color: var(--text-3);
+            font-family: 'DM Mono', monospace;
+            padding-top: 5px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── HISTORY ── */
+        .history-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-row:last-child { border-bottom: none; }
+
+        .history-date {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .history-behaviors {
+            font-size: 11px;
+            color: var(--text-3);
+            margin-top: 2px;
+            max-width: 180px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-xp {
+            font-family: 'DM Mono', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            margin-right: 10px;
+        }
+
+        .edit-btn {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-2);
+            background: var(--surface-2);
+            border: none;
+            border-radius: 6px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        /* ── BEHAVIORS MGMT ── */
+        .add-cat-btn, .add-beh-btn {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-2);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            padding: 2px 0;
+        }
+
+        .beh-manage-row {
+            display: flex;
+            align-items: center;
+            padding: 11px 18px;
+            border-bottom: 1px solid var(--border);
+            gap: 10px;
+        }
+
+        .beh-manage-row:last-child { border-bottom: none; }
+
+        .beh-manage-name { flex: 1; font-size: 14px; color: var(--text); }
+        .beh-manage-pts { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-3); }
+
+        .del-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: none;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .del-btn:hover { background: #fdecea; border-color: #f5c6c2; }
+        .del-btn svg { width: 12px; height: 12px; stroke: var(--text-3); fill: none; stroke-width: 2.5; stroke-linecap: round; }
+        .del-btn:hover svg { stroke: var(--danger); }
+
+        /* ── SETTINGS ── */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 14px; color: var(--text); }
+        .setting-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+        .setting-input {
+            width: 80px;
+            text-align: right;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            font-family: 'DM Mono', monospace;
+            color: var(--text);
+            background: var(--surface);
+        }
+        .setting-input:focus { outline: none; border-color: var(--text); }
+
+        .settings-btn {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            text-align: left;
+            margin-bottom: 8px;
+            transition: background 0.15s;
+        }
+        .settings-btn:hover { background: var(--surface-2); }
+        .settings-btn.danger { color: var(--danger); }
+
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            padding: 14px 18px;
+        }
+
+        .stat-pill {
+            flex: 1;
+            text-align: center;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: 10px 6px;
+        }
+
+        .stat-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .stat-lbl {
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        /* ── MODAL ── */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal-backdrop.active { display: flex; }
+
+        .modal-sheet {
+            background: var(--surface);
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 36px;
+            width: 100%;
+            max-width: 560px;
+            animation: slideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-handle {
+            width: 36px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 99px;
+            margin: 0 auto 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text);
+            background: var(--surface);
+            margin-bottom: 14px;
+            transition: border-color 0.15s;
+        }
+        .form-input:focus { outline: none; border-color: var(--text); }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .btn-cancel {
+            flex: 1;
+            padding: 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-2);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .btn-save {
+            flex: 2;
+            padding: 13px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--text);
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        /* ── EDIT LOG MODAL ── */
+        .edit-check-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .edit-check-row:last-child { border-bottom: none; }
+
+        .edit-check-name { font-size: 14px; color: var(--text); flex: 1; }
+        .edit-check-pts { font-size: 12px; color: var(--text-3); font-family: 'DM Mono', monospace; margin-right: 12px; }
+
+        .toggle {
+            width: 34px;
+            height: 20px;
+            border-radius: 99px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            flex-shrink: 0;
+        }
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .toggle.on { background: var(--text); border-color: var(--text); }
+        .toggle.on::after { transform: translateX(14px); }
+
+        .edit-cat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-3);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 12px 0 6px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 36px 20px;
+            color: var(--text-3);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- VIEWS -->
+    <div class="view active" id="view-today"></div>
+    <div class="view" id="view-analytics"></div>
+    <div class="view" id="view-history"></div>
+    <div class="view" id="view-behaviors"></div>
+    <div class="view" id="view-settings"></div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-tab="today" onclick="switchTab('today')">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </div>
+            <span class="nav-label">Today</span>
+        </div>
+        <div class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+            </div>
+            <span class="nav-label">Stats</span>
+        </div>
+        <div class="nav-item" data-tab="history" onclick="switchTab('history')">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-4"/><path d="M3 3v4h4"/></svg>
+            </div>
+            <span class="nav-label">History</span>
+        </div>
+        <div class="nav-item" data-tab="behaviors" onclick="switchTab('behaviors')">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </div>
+            <span class="nav-label">Habits</span>
+        </div>
+        <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <span class="nav-label">Settings</span>
+        </div>
+    </nav>
+
+    <!-- ADD BEHAVIOR MODAL -->
+    <div class="modal-backdrop" id="modal-behavior">
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-title" id="modal-behavior-title">Add Habit</div>
+            <label class="form-label">Name</label>
+            <input type="text" class="form-input" id="inp-beh-name" placeholder="e.g. Morning run">
+            <label class="form-label">Points (XP)</label>
+            <input type="number" class="form-input" id="inp-beh-pts" placeholder="10" min="1">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-behavior')">Cancel</button>
+                <button class="btn-save" onclick="saveBehavior()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD CATEGORY MODAL -->
+    <div class="modal-backdrop" id="modal-category">
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-title">Add Category</div>
+            <label class="form-label">Category name</label>
+            <input type="text" class="form-input" id="inp-cat-name" placeholder="e.g. Sleep">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-category')">Cancel</button>
+                <button class="btn-save" onclick="saveCategory()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT LOG MODAL -->
+    <div class="modal-backdrop" id="modal-edit-log">
+        <div class="modal-sheet" style="max-height:80vh;overflow-y:auto;">
+            <div class="modal-handle"></div>
+            <div class="modal-title" id="modal-edit-log-title">Edit Entry</div>
+            <div id="modal-edit-log-content"></div>
+            <div class="modal-actions" style="margin-top:16px;">
+                <button class="btn-cancel" onclick="closeModal('modal-edit-log')">Cancel</button>
+                <button class="btn-save" onclick="saveLogEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="import-file" accept=".json" style="display:none;">
+
+    <script>
+    // ── CONSTANTS & STATE ──────────────────────────────────────────────
+    const XP_PER_LEVEL = 100;
+    let currentTab = 'today';
+    let currentAnalyticsView = 'daily';
+    let editingBehCategory = '';
+    let editingLogDate = '';
+
+    // ── STORAGE ────────────────────────────────────────────────────────
+    function getCategories() {
+        try {
+            const d = localStorage.getItem('xp_categories');
+            if (d) return JSON.parse(d);
+        } catch(e) {}
+        // Migrate from old fixed system or set defaults
+        return ['Fitness', 'Diet', 'Health', 'Productivity', 'Relationships'];
+    }
+
+    function saveCategories(cats) {
+        localStorage.setItem('xp_categories', JSON.stringify(cats));
+    }
+
+    function getBehaviors() {
+        try {
+            const d = localStorage.getItem('xp_behaviors');
+            return d ? JSON.parse(d) : {};
+        } catch(e) { return {}; }
+    }
+
+    function saveBehaviors(b) {
+        localStorage.setItem('xp_behaviors', JSON.stringify(b));
+    }
+
+    function getLogs() {
+        try {
+            const d = localStorage.getItem('xp_logs');
+            return d ? JSON.parse(d) : {};
+        } catch(e) { return {}; }
+    }
+
+    function saveLogs(l) {
+        localStorage.setItem('xp_logs', JSON.stringify(l));
+    }
+
+    function getDailyGoal() {
+        return parseInt(localStorage.getItem('xp_daily_goal') || '0') || 0;
+    }
+
+    function saveDailyGoal(v) {
+        localStorage.setItem('xp_daily_goal', String(v));
+    }
+
+    function getTodayStr() {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    function formatDate(dateStr) {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // ── NAVIGATION ─────────────────────────────────────────────────────
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.toggle('active', n.dataset.tab === tab);
+        });
+        document.getElementById(`view-${tab}`).classList.add('active');
+        const renders = { today: renderToday, analytics: renderAnalytics, history: renderHistory, behaviors: renderBehaviors, settings: renderSettings };
+        renders[tab]?.();
+    }
+
+    // ── STREAK ─────────────────────────────────────────────────────────
+    function calcStreak(logs) {
+        let streak = 0;
+        const today = new Date();
+        for (let i = 0; i < 365; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().split('T')[0];
+            const dayLogs = logs[key] || {};
+            if (Object.keys(dayLogs).length > 0) {
+                streak++;
+            } else if (i === 0) {
+                // today hasn't been logged yet — look backward
+                continue;
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }
+
+    function calc7DayAvg(logs) {
+        let total = 0, count = 0;
+        const today = new Date();
+        for (let i = 1; i <= 7; i++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const key = d.toISOString().split('T')[0];
+            const dayLogs = logs[key] || {};
+            const keys = Object.keys(dayLogs);
+            if (keys.length > 0) {
+                total += Object.values(dayLogs).reduce((s,p) => s+p, 0);
+                count++;
+            }
+        }
+        return count > 0 ? total / count : 0;
+    }
+
+    // ── TODAY ──────────────────────────────────────────────────────────
+    function renderToday() {
+        const behaviors = getBehaviors();
+        const logs = getLogs();
+        const categories = getCategories();
+        const today = getTodayStr();
+        const todayLogs = logs[today] || {};
+        const goal = getDailyGoal();
+
+        let todayXP = Object.values(todayLogs).reduce((s,p) => s+p, 0);
+        const streak = calcStreak(logs);
+        const avg = calc7DayAvg(logs);
+        const diff = todayXP - avg;
+        const pct = avg > 0 ? ((diff / avg) * 100).toFixed(0) : null;
+
+        // Progress bar
+        let progressHTML = '';
+        if (goal > 0) {
+            const pctGoal = Math.min(100, Math.round((todayXP / goal) * 100));
+            progressHTML = `
+                <div class="progress-wrap">
+                    <div class="progress-meta">
+                        <span class="progress-label">Daily goal</span>
+                        <span class="progress-pct">${pctGoal}%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width:${pctGoal}%"></div>
+                    </div>
+                </div>`;
+        }
+
+        // Comparison
+        let compHTML = '';
+        if (avg > 0) {
+            const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'neutral';
+            const arrow = diff > 0 ? '+' : '';
+            compHTML = `<div class="comparison">
+                vs 7-day avg
+                <span class="comparison-val ${cls}">${arrow}${Math.round(diff)} XP (${diff >= 0 ? '+' : ''}${pct}%)</span>
+            </div>`;
+        }
+
+        // Today date
+        const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+        let html = `
+            <div class="today-hero">
+                <div class="today-top">
+                    <div>
+                        <div class="today-date">${todayLabel}</div>
+                        <div class="today-xp">${todayXP}</div>
+                        <div class="today-xp-label">XP today</div>
+                    </div>
+                    <div class="streak-badge">
+                        <div class="streak-num">${streak}</div>
+                        <div class="streak-label">day streak</div>
+                    </div>
+                </div>
+                ${progressHTML}
+                ${compHTML}
+            </div>`;
+
+        let hasBehaviors = false;
+        for (const cat of categories) {
+            const catBehaviors = (behaviors[cat] || []);
+            if (catBehaviors.length === 0) continue;
+            hasBehaviors = true;
+
+            html += `<div class="section-label">${cat}</div><div class="card">`;
+            for (const b of catBehaviors) {
+                const logged = todayLogs[b.id] !== undefined;
+                html += `<div class="behavior-row">
+                    <span class="behavior-name">${b.name}</span>
+                    <span class="behavior-pts">+${b.points}</span>
+                    <button class="log-btn ${logged ? 'logged' : ''}"
+                        id="logbtn-${b.id}"
+                        ${logged ? 'disabled' : ''}
+                        onclick="logBehavior('${b.id}', ${b.points})">
+                        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                </div>`;
+            }
+            html += `</div>`;
+        }
+
+        if (!hasBehaviors) {
+            html += `<div class="card"><div class="empty-state">No habits yet.<br>Add some in the Habits tab.</div></div>`;
+        }
+
+        document.getElementById('view-today').innerHTML = html;
+    }
+
+    function logBehavior(id, points) {
+        const logs = getLogs();
+        const today = getTodayStr();
+        if (!logs[today]) logs[today] = {};
+        logs[today][id] = points;
+        saveLogs(logs);
+
+        // Animate button
+        const btn = document.getElementById(`logbtn-${id}`);
+        if (btn) {
+            btn.classList.add('logged', 'celebrate');
+            btn.disabled = true;
+            btn.addEventListener('animationend', () => btn.classList.remove('celebrate'), { once: true });
+        }
+
+        // Re-render header XP + progress after short delay
+        setTimeout(renderToday, 80);
+    }
+
+    // ── ANALYTICS ─────────────────────────────────────────────────────
+    function calcAllTimeRecords(logs) {
+        const dates = Object.keys(logs);
+        let bestDay = { value: 0, date: '' };
+        for (const d of dates) {
+            const xp = Object.values(logs[d]).reduce((s,p) => s+p, 0);
+            if (xp > bestDay.value) bestDay = { value: xp, date: formatDate(d) };
+        }
+
+        let bestWeek = { value: 0, date: '' };
+        if (dates.length) {
+            const sorted = [...dates].sort();
+            const first = new Date(sorted[0] + 'T00:00:00');
+            const now = new Date();
+            for (let d = new Date(first); d <= now; d.setDate(d.getDate() + 1)) {
+                let wXP = 0;
+                for (let i = 0; i < 7; i++) {
+                    const dd = new Date(d); dd.setDate(dd.getDate() + i);
+                    wXP += Object.values(logs[dd.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
+                }
+                if (wXP > bestWeek.value) {
+                    const we = new Date(d); we.setDate(we.getDate() + 6);
+                    bestWeek = { value: wXP, date: formatDate(we.toISOString().split('T')[0]) };
+                }
+            }
+        }
+
+        let bestMonth = { value: 0, date: '' };
+        const months = {};
+        for (const d of dates) {
+            const mk = d.slice(0,7);
+            months[mk] = (months[mk] || 0) + Object.values(logs[d]).reduce((s,p)=>s+p,0);
+        }
+        for (const [mk, xp] of Object.entries(months)) {
+            if (xp > bestMonth.value) {
+                const dd = new Date(mk + '-01T00:00:00');
+                bestMonth = { value: xp, date: dd.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
+            }
+        }
+        return { bestDay, bestWeek, bestMonth };
+    }
+
+    function renderAnalytics() {
+        const logs = getLogs();
+        const rec = calcAllTimeRecords(logs);
+        const goal = getDailyGoal();
+
+        let html = `
+            <div class="card">
+                <div class="card-header"><span class="card-title">All-time records</span></div>
+                <div class="records-grid">
+                    <div class="record-cell">
+                        <div class="record-val">${rec.bestDay.value}</div>
+                        <div class="record-sub">Best day</div>
+                        <div class="record-date">${rec.bestDay.date || '—'}</div>
+                    </div>
+                    <div class="record-cell">
+                        <div class="record-val">${rec.bestWeek.value}</div>
+                        <div class="record-sub">Best week</div>
+                        <div class="record-date">${rec.bestWeek.date || '—'}</div>
+                    </div>
+                    <div class="record-cell">
+                        <div class="record-val">${rec.bestMonth.value}</div>
+                        <div class="record-sub">Best month</div>
+                        <div class="record-date">${rec.bestMonth.date || '—'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="tab-row">
+                    <button class="tab-btn ${currentAnalyticsView === 'daily' ? 'active' : ''}" onclick="setAnalyticsView('daily')">7 days</button>
+                    <button class="tab-btn ${currentAnalyticsView === 'weekly' ? 'active' : ''}" onclick="setAnalyticsView('weekly')">8 weeks</button>
+                    <button class="tab-btn ${currentAnalyticsView === 'monthly' ? 'active' : ''}" onclick="setAnalyticsView('monthly')">6 months</button>
+                </div>
+                ${buildChart(logs)}
+            </div>`;
+
+        document.getElementById('view-analytics').innerHTML = html;
+    }
+
+    function setAnalyticsView(v) {
+        currentAnalyticsView = v;
+        renderAnalytics();
+    }
+
+    function buildChart(logs) {
+        let data = [];
+        const today = new Date();
+
+        if (currentAnalyticsView === 'daily') {
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today); d.setDate(d.getDate() - i);
+                const key = d.toISOString().split('T')[0];
+                const xp = Object.values(logs[key] || {}).reduce((s,p)=>s+p,0);
+                data.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0,2), value: xp, isToday: i === 0 });
+            }
+        } else if (currentAnalyticsView === 'weekly') {
+            for (let i = 7; i >= 0; i--) {
+                const we = new Date(today); we.setDate(we.getDate() - i * 7);
+                const ws = new Date(we); ws.setDate(ws.getDate() - 6);
+                let xp = 0;
+                for (let d = new Date(ws); d <= we; d.setDate(d.getDate()+1)) {
+                    xp += Object.values(logs[d.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
+                }
+                data.push({ label: `W${8-i}`, value: xp, isToday: i === 0 });
+            }
+        } else {
+            for (let i = 5; i >= 0; i--) {
+                const m = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const me = new Date(m.getFullYear(), m.getMonth()+1, 0);
+                let xp = 0;
+                for (let d = new Date(m); d <= me; d.setDate(d.getDate()+1)) {
+                    xp += Object.values(logs[d.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
+                }
+                data.push({ label: m.toLocaleDateString('en-US', { month: 'short' }), value: xp, isToday: i === 0 });
+            }
+        }
+
+        const maxVal = Math.max(...data.map(d=>d.value), 1);
+
+        let bars = data.map(d => {
+            const h = Math.round((d.value / maxVal) * 100);
+            const cls = d.isToday ? 'today-bar' : '';
+            return `<div class="bar-col">
+                <div class="bar-val">${d.value > 0 ? d.value : ''}</div>
+                <div class="bar-fill ${cls}" style="height:${h}%"></div>
+            </div>`;
+        }).join('');
+
+        let labels = data.map(d => `<div class="bar-label">${d.label}</div>`).join('');
+
+        return `<div class="chart-area">
+            <div class="bars-wrap">${bars}</div>
+        </div>
+        <div class="bar-labels">${labels}</div>`;
+    }
+
+    // ── HISTORY ────────────────────────────────────────────────────────
+    function renderHistory() {
+        const logs = getLogs();
+        const behaviors = getBehaviors();
+        const categories = getCategories();
+
+        const bNames = {};
+        for (const cat of categories) {
+            for (const b of (behaviors[cat] || [])) bNames[b.id] = b.name;
+        }
+
+        // Only last 14 days
+        const today = new Date();
+        const cutoff = new Date(today);
+        cutoff.setDate(cutoff.getDate() - 14);
+
+        const dates = Object.keys(logs)
+            .filter(d => new Date(d) >= cutoff)
+            .sort()
+            .reverse();
+
+        let html = '';
+        if (dates.length === 0) {
+            html = `<div class="card"><div class="empty-state">No entries in the last 14 days.</div></div>`;
+        } else {
+            html = `<div class="card">`;
+            for (const date of dates) {
+                const dayLogs = logs[date];
+                const xp = Object.values(dayLogs).reduce((s,p)=>s+p,0);
+                const names = Object.keys(dayLogs).map(id => bNames[id] || '?').join(', ');
+                html += `<div class="history-row">
+                    <div>
+                        <div class="history-date">${formatDate(date)}</div>
+                        <div class="history-behaviors">${names || '—'}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="history-xp">${xp}</span>
+                        <button class="edit-btn" onclick="openEditLog('${date}')">Edit</button>
+                    </div>
+                </div>`;
+            }
+            html += `</div>`;
+        }
+
+        document.getElementById('view-history').innerHTML = html;
+    }
+
+    function openEditLog(date) {
+        editingLogDate = date;
+        const logs = getLogs();
+        const behaviors = getBehaviors();
+        const categories = getCategories();
+        const dayLogs = logs[date] || {};
+
+        document.getElementById('modal-edit-log-title').textContent = formatDate(date);
+
+        let html = '';
+        for (const cat of categories) {
+            const catBehaviors = behaviors[cat] || [];
+            if (catBehaviors.length === 0) continue;
+            html += `<div class="edit-cat-label">${cat}</div>`;
+            for (const b of catBehaviors) {
+                const on = dayLogs[b.id] !== undefined;
+                html += `<div class="edit-check-row">
+                    <span class="edit-check-name">${b.name}</span>
+                    <span class="edit-check-pts">+${b.points}</span>
+                    <div class="toggle ${on ? 'on' : ''}" data-bid="${b.id}" data-pts="${b.points}" onclick="toggleEditCheck(this)"></div>
+                </div>`;
+            }
+        }
+
+        document.getElementById('modal-edit-log-content').innerHTML = html;
+        document.getElementById('modal-edit-log').classList.add('active');
+    }
+
+    function toggleEditCheck(el) {
+        el.classList.toggle('on');
+    }
+
+    function saveLogEdit() {
+        const logs = getLogs();
+        const toggles = document.querySelectorAll('#modal-edit-log-content .toggle');
+        logs[editingLogDate] = {};
+        toggles.forEach(t => {
+            if (t.classList.contains('on')) {
+                logs[editingLogDate][t.dataset.bid] = parseInt(t.dataset.pts);
+            }
+        });
+        saveLogs(logs);
+        closeModal('modal-edit-log');
+        renderHistory();
+    }
+
+    // ── BEHAVIORS ─────────────────────────────────────────────────────
+    function renderBehaviors() {
+        const behaviors = getBehaviors();
+        const categories = getCategories();
+
+        let html = '';
+        for (const cat of categories) {
+            const catBehaviors = behaviors[cat] || [];
+            html += `<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>${cat}</span>
+                <div style="display:flex;gap:10px;">
+                    <button class="add-beh-btn" onclick="openAddBehavior('${cat}')">+ habit</button>
+                    <button class="add-beh-btn" style="color:var(--danger)" onclick="deleteCategory('${cat}')">remove</button>
+                </div>
+            </div>`;
+            html += `<div class="card">`;
+            if (catBehaviors.length === 0) {
+                html += `<div class="empty-state" style="padding:20px">No habits yet</div>`;
+            }
+            for (const b of catBehaviors) {
+                html += `<div class="beh-manage-row">
+                    <span class="beh-manage-name">${b.name}</span>
+                    <span class="beh-manage-pts">+${b.points} XP</span>
+                    <button class="del-btn" onclick="deleteBehavior('${cat}','${b.id}')">
+                        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>`;
+            }
+            html += `</div>`;
+        }
+
+        html += `<button class="settings-btn" style="margin-top:4px;" onclick="openAddCategory()">+ Add category</button>`;
+
+        document.getElementById('view-behaviors').innerHTML = html;
+    }
+
+    function openAddBehavior(cat) {
+        editingBehCategory = cat;
+        document.getElementById('modal-behavior-title').textContent = `Add habit — ${cat}`;
+        document.getElementById('inp-beh-name').value = '';
+        document.getElementById('inp-beh-pts').value = '';
+        document.getElementById('modal-behavior').classList.add('active');
+        setTimeout(() => document.getElementById('inp-beh-name').focus(), 100);
+    }
+
+    function saveBehavior() {
+        const name = document.getElementById('inp-beh-name').value.trim();
+        const pts = parseInt(document.getElementById('inp-beh-pts').value);
+        if (!name || !pts || pts <= 0) { alert('Please enter a name and valid points.'); return; }
+        const behaviors = getBehaviors();
+        if (!behaviors[editingBehCategory]) behaviors[editingBehCategory] = [];
+        behaviors[editingBehCategory].push({ id: Date.now().toString(), name, points: pts });
+        saveBehaviors(behaviors);
+        closeModal('modal-behavior');
+        renderBehaviors();
+    }
+
+    function deleteBehavior(cat, id) {
+        const behaviors = getBehaviors();
+        behaviors[cat] = (behaviors[cat] || []).filter(b => b.id !== id);
+        saveBehaviors(behaviors);
+        renderBehaviors();
+    }
+
+    function openAddCategory() {
+        document.getElementById('inp-cat-name').value = '';
+        document.getElementById('modal-category').classList.add('active');
+        setTimeout(() => document.getElementById('inp-cat-name').focus(), 100);
+    }
+
+    function saveCategory() {
+        const name = document.getElementById('inp-cat-name').value.trim();
+        if (!name) { alert('Please enter a category name.'); return; }
+        const cats = getCategories();
+        if (cats.includes(name)) { alert('Category already exists.'); return; }
+        cats.push(name);
+        saveCategories(cats);
+        closeModal('modal-category');
+        renderBehaviors();
+    }
+
+    function deleteCategory(cat) {
+        if (!confirm(`Remove category "${cat}"? Habits in it will also be deleted.`)) return;
+        const cats = getCategories().filter(c => c !== cat);
+        saveCategories(cats);
+        const behaviors = getBehaviors();
+        delete behaviors[cat];
+        saveBehaviors(behaviors);
+        renderBehaviors();
+    }
+
+    // ── SETTINGS ──────────────────────────────────────────────────────
+    function renderSettings() {
+        const behaviors = getBehaviors();
+        const logs = getLogs();
+        const categories = getCategories();
+        const goal = getDailyGoal();
+
+        const behCount = Object.values(behaviors).reduce((s, bs) => s + bs.length, 0);
+        const daysLogged = Object.keys(logs).length;
+        const totalXP = Object.values(logs).reduce((s, dl) => s + Object.values(dl).reduce((a,p)=>a+p,0), 0);
+
+        document.getElementById('view-settings').innerHTML = `
+            <div class="card">
+                <div class="card-header"><span class="card-title">Your data</span></div>
+                <div class="stats-row">
+                    <div class="stat-pill"><div class="stat-val">${behCount}</div><div class="stat-lbl">Habits</div></div>
+                    <div class="stat-pill"><div class="stat-val">${daysLogged}</div><div class="stat-lbl">Days</div></div>
+                    <div class="stat-pill"><div class="stat-val">${totalXP}</div><div class="stat-lbl">Total XP</div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><span class="card-title">Daily goal</span></div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">XP target</div>
+                        <div class="setting-meta">Shown as progress bar on Today</div>
+                    </div>
+                    <input class="setting-input" id="inp-goal" type="number" min="0" value="${goal || ''}" placeholder="0">
+                </div>
+                <div class="setting-row" style="border-bottom:none;padding-top:0;">
+                    <button class="btn-save" style="width:100%;padding:11px;" onclick="saveGoal()">Save goal</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><span class="card-title">Backup</span></div>
+                <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;">
+                    <button class="settings-btn" onclick="exportData()">Export JSON backup</button>
+                    <button class="settings-btn" onclick="document.getElementById('import-file').click()">Import JSON backup</button>
+                    <button class="settings-btn danger" onclick="clearAll()">Clear all data…</button>
+                </div>
+                <div style="padding:0 18px 14px;font-size:11px;color:var(--text-3);line-height:1.6;">
+                    iOS may clear app data when storage is low. Export regularly to Files or iCloud.
+                </div>
+            </div>
+        `;
+    }
+
+    function saveGoal() {
+        const v = parseInt(document.getElementById('inp-goal').value) || 0;
+        saveDailyGoal(v);
+        renderSettings();
+        if (currentTab === 'today') renderToday();
+    }
+
+    function exportData() {
+        const data = { behaviors: getBehaviors(), logs: getLogs(), exportDate: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `xp-tracker-${getTodayStr()}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+        if (!confirm('Clear ALL data? This cannot be undone.')) return;
+        localStorage.removeItem('xp_behaviors');
+        localStorage.removeItem('xp_logs');
+        localStorage.removeItem('xp_categories');
+        renderSettings();
+        renderToday();
+    }
+
+    document.getElementById('import-file').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (data.behaviors && data.logs) {
+                    saveBehaviors(data.behaviors);
+                    saveLogs(data.logs);
+                    // If old backup had implicit categories, restore them
+                    if (!localStorage.getItem('xp_categories')) {
+                        saveCategories(Object.keys(data.behaviors));
+                    }
+                    alert('Imported successfully.');
+                    renderSettings();
+                    renderToday();
+                } else { alert('Invalid backup file.'); }
+            } catch(err) { alert('Error: ' + err.message); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    });
+
+    // ── MODALS ─────────────────────────────────────────────────────────
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    // Close modal on backdrop click
+    document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
+    });
+
+    // ── INIT ──────────────────────────────────────────────────────────
+    (function init() {
+        // Ensure categories are seeded
+        if (!localStorage.getItem('xp_categories')) {
+            const behaviors = getBehaviors();
+            const fromBehaviors = Object.keys(behaviors);
+            saveCategories(fromBehaviors.length ? fromBehaviors : ['Fitness', 'Diet', 'Health', 'Productivity', 'Relationships']);
+        }
+        renderToday();
+    })();
+    </script>
+</body>
+</html>
