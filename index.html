@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>XP Tracker</title>
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="XP Tracker">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -1088,18 +1093,25 @@
 
         let bestWeek = { value: 0, date: '' };
         if (dates.length) {
-            const sorted = [...dates].sort();
-            const first = new Date(sorted[0] + 'T00:00:00');
-            const now = new Date();
-            for (let d = new Date(first); d <= now; d.setDate(d.getDate() + 1)) {
+            // Collect all calendar weeks (Mon–Sun) that contain any logged date
+            const weekKeys = new Set();
+            for (const d of dates) {
+                const dt = new Date(d + 'T00:00:00');
+                const dow = dt.getDay(); // 0=Sun,1=Mon...6=Sat
+                const monday = new Date(dt);
+                monday.setDate(dt.getDate() - ((dow + 6) % 7)); // shift to Monday
+                weekKeys.add(monday.toISOString().split('T')[0]);
+            }
+            for (const monStr of weekKeys) {
+                const monday = new Date(monStr + 'T00:00:00');
                 let wXP = 0;
                 for (let i = 0; i < 7; i++) {
-                    const dd = new Date(d); dd.setDate(dd.getDate() + i);
+                    const dd = new Date(monday); dd.setDate(monday.getDate() + i);
                     wXP += Object.values(logs[dd.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
                 }
                 if (wXP > bestWeek.value) {
-                    const we = new Date(d); we.setDate(we.getDate() + 6);
-                    bestWeek = { value: wXP, date: formatDate(we.toISOString().split('T')[0]) };
+                    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+                    bestWeek = { value: wXP, date: `w/e ${formatDate(sunday.toISOString().split('T')[0])}` };
                 }
             }
         }
@@ -1288,7 +1300,7 @@
             if (b.freq === null) {
                 freqText = '—';
                 subText = 'never logged';
-            } else if (b.freq < 1.5) {
+            } else if (b.freq <= 1.0) {
                 freqText = 'daily';
                 subText = `${b.logCount}\u00d7 over ${b.calendarDays}d`;
             } else {
