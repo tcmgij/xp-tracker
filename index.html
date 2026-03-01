@@ -913,7 +913,13 @@
     }
 
     function getTodayStr() {
-        return new Date().toISOString().split('T')[0];
+        return localDateStr(new Date());
+    }
+
+    function localDateStr(d) {
+        return d.getFullYear() + '-' +
+            String(d.getMonth() + 1).padStart(2, '0') + '-' +
+            String(d.getDate()).padStart(2, '0');
     }
 
     function formatDate(dateStr) {
@@ -940,7 +946,7 @@
         for (let i = 0; i < 365; i++) {
             const d = new Date(today);
             d.setDate(d.getDate() - i);
-            const key = d.toISOString().split('T')[0];
+            const key = localDateStr(d);
             const dayLogs = logs[key] || {};
             if (Object.keys(dayLogs).length > 0) {
                 streak++;
@@ -960,7 +966,7 @@
         for (let i = 1; i <= 7; i++) {
             const d = new Date(today);
             d.setDate(d.getDate() - i);
-            const key = d.toISOString().split('T')[0];
+            const key = localDateStr(d);
             const dayLogs = logs[key] || {};
             const keys = Object.keys(dayLogs);
             if (keys.length > 0) {
@@ -1100,14 +1106,14 @@
                 const dow = dt.getDay(); // 0=Sun,1=Mon...6=Sat
                 const monday = new Date(dt);
                 monday.setDate(dt.getDate() - ((dow + 6) % 7)); // shift to Monday
-                weekKeys.add(monday.toISOString().split('T')[0]);
+                weekKeys.add(localDateStr(monday));
             }
             for (const monStr of weekKeys) {
                 const monday = new Date(monStr + 'T00:00:00');
                 let wXP = 0;
                 for (let i = 0; i < 7; i++) {
                     const dd = new Date(monday); dd.setDate(monday.getDate() + i);
-                    wXP += Object.values(logs[dd.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
+                    wXP += Object.values(logs[localDateStr(dd)] || {}).reduce((s,p)=>s+p,0);
                 }
                 if (wXP > bestWeek.value) {
                     bestWeek = { value: wXP, date: `w/ ${formatDate(monStr)}` };
@@ -1188,7 +1194,7 @@
         if (currentAnalyticsView === 'daily') {
             for (let i = 6; i >= 0; i--) {
                 const d = new Date(today); d.setDate(d.getDate() - i);
-                const key = d.toISOString().split('T')[0];
+                const key = localDateStr(d);
                 const xp = Object.values(logs[key] || {}).reduce((s,p)=>s+p,0);
                 data.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0,2), value: xp, isToday: i === 0 });
             }
@@ -1206,7 +1212,7 @@
                 sunday.setDate(monday.getDate() + 6);
                 let xp = 0;
                 for (let d = new Date(monday); d <= sunday; d.setDate(d.getDate()+1)) {
-                    xp += Object.values(logs[d.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
+                    xp += Object.values(logs[localDateStr(d)] || {}).reduce((s,p)=>s+p,0);
                 }
                 const label = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 data.push({ label, value: xp, isToday: i === 0 });
@@ -1217,7 +1223,7 @@
                 const me = new Date(m.getFullYear(), m.getMonth()+1, 0);
                 let xp = 0;
                 for (let d = new Date(m); d <= me; d.setDate(d.getDate()+1)) {
-                    xp += Object.values(logs[d.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
+                    xp += Object.values(logs[localDateStr(d)] || {}).reduce((s,p)=>s+p,0);
                 }
                 data.push({ label: m.toLocaleDateString('en-US', { month: 'short' }), value: xp, isToday: i === 0 });
             }
