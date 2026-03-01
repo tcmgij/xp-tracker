@@ -1110,8 +1110,7 @@
                     wXP += Object.values(logs[dd.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
                 }
                 if (wXP > bestWeek.value) {
-                    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-                    bestWeek = { value: wXP, date: `w/e ${formatDate(sunday.toISOString().split('T')[0])}` };
+                    bestWeek = { value: wXP, date: `w/ ${formatDate(monStr)}` };
                 }
             }
         }
@@ -1194,14 +1193,23 @@
                 data.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0,2), value: xp, isToday: i === 0 });
             }
         } else if (currentAnalyticsView === 'weekly') {
+            // Find the Monday of the current calendar week
+            const dow = today.getDay();
+            const thisMonday = new Date(today);
+            thisMonday.setDate(today.getDate() - ((dow + 6) % 7));
+            thisMonday.setHours(0,0,0,0);
+            // Show 8 calendar weeks ending with the current one
             for (let i = 7; i >= 0; i--) {
-                const we = new Date(today); we.setDate(we.getDate() - i * 7);
-                const ws = new Date(we); ws.setDate(ws.getDate() - 6);
+                const monday = new Date(thisMonday);
+                monday.setDate(thisMonday.getDate() - i * 7);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
                 let xp = 0;
-                for (let d = new Date(ws); d <= we; d.setDate(d.getDate()+1)) {
+                for (let d = new Date(monday); d <= sunday; d.setDate(d.getDate()+1)) {
                     xp += Object.values(logs[d.toISOString().split('T')[0]] || {}).reduce((s,p)=>s+p,0);
                 }
-                data.push({ label: `W${8-i}`, value: xp, isToday: i === 0 });
+                const label = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                data.push({ label, value: xp, isToday: i === 0 });
             }
         } else {
             for (let i = 5; i >= 0; i--) {
