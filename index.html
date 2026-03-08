@@ -815,6 +815,31 @@
         </div>
     </nav>
 
+
+    <!-- TOAST -->
+    <div class="toast" id="reward-toast">
+        <div class="toast-title" id="reward-toast-title"></div>
+        <div class="toast-body" id="reward-toast-body"></div>
+    </div>
+
+    <!-- EDIT BEHAVIOR MODAL -->
+    <div class="modal-backdrop" id="modal-edit-behavior">
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-title">Edit Habit</div>
+            <label class="form-label">Name</label>
+            <input type="text" class="form-input" id="inp-edit-beh-name" placeholder="e.g. Morning run">
+            <label class="form-label">Points (XP)</label>
+            <input type="number" class="form-input" id="inp-edit-beh-pts" placeholder="10" min="1">
+            <input type="hidden" id="inp-edit-beh-id">
+            <input type="hidden" id="inp-edit-beh-cat">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeModal('modal-edit-behavior')">Cancel</button>
+                <button class="btn-save" onclick="saveEditBehavior()">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ADD BEHAVIOR MODAL -->
     <div class="modal-backdrop" id="modal-behavior">
         <div class="modal-sheet">
@@ -903,6 +928,21 @@
     function saveLogs(l) {
         localStorage.setItem('xp_logs', JSON.stringify(l));
     }
+
+
+    function getRewards() {
+        try { return JSON.parse(localStorage.getItem('xp_rewards') || '{}'); } catch(e) { return {}; }
+    }
+    function saveRewards(r) { localStorage.setItem('xp_rewards', JSON.stringify(r)); }
+
+    // Fired flags: { day: 'YYYY-MM-DD', week: 'YYYY-MM-DD' (monday), month: 'YYYY-MM' }
+    function getFired() {
+        try { return JSON.parse(localStorage.getItem('xp_reward_fired') || '{}'); } catch(e) { return {}; }
+    }
+    function saveFired(f) { localStorage.setItem('xp_reward_fired', JSON.stringify(f)); }
+
+    // Session-only new-record flags (reset on page load)
+    const sessionRecords = { day: false, week: false, month: false };
 
     function getDailyGoal() {
         return parseInt(localStorage.getItem('xp_daily_goal') || '0') || 0;
@@ -1084,55 +1124,86 @@
             btn.addEventListener('animationend', () => btn.classList.remove('celebrate'), { once: true });
         }
 
-        // Re-render header XP + progress after short delay
-        setTimeout(renderToday, 80);
+        // Check rewards and re-render
+        setTimeout(() => {
+            checkRewards(getLogs());
+            renderToday();
+        }, 200);
     }
 
     // ── ANALYTICS ─────────────────────────────────────────────────────
+    // Returns days in a given month
+    function daysInMonth(year, month) {
+        return new Date(year, month + 1, 0).getDate();
+    }
+
+    // Get Monday date string for any date string
+    function getMondayStr(dateStr) {
+        const dt = new Date(dateStr + 'T00:00:00');
+        const dow = dt.getDay();
+        const monday = new Date(dt);
+        monday.setDate(dt.getDate() - ((dow + 6) % 7));
+        return localDateStr(monday);
+    }
+
+    // Sum XP for a calendar week starting from mondayStr
+    function weekXP(logs, monStr) {
+        const monday = new Date(monStr + 'T00:00:00');
+        let xp = 0;
+        for (let i = 0; i < 7; i++) {
+            const dd = new Date(monday); dd.setDate(monday.getDate() + i);
+            xp += Object.values(logs[localDateStr(dd)] || {}).reduce((s,p)=>s+p,0);
+        }
+        return xp;
+    }
+
+    // Sum XP for a calendar month (YYYY-MM)
+    function monthXP(logs, mk) {
+        const [y, m] = mk.split('-').map(Number);
+        const days = daysInMonth(y, m - 1);
+        let xp = 0;
+        for (let i = 1; i <= days; i++) {
+            const ds = `${y}-${String(m).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+            xp += Object.values(logs[ds] || {}).reduce((s,p)=>s+p,0);
+        }
+        return xp;
+    }
+
     function calcAllTimeRecords(logs) {
         const dates = Object.keys(logs);
-        let bestDay = { value: 0, date: '' };
+
+        // Best day — raw XP
+        let bestDay = { value: 0, date: '', dateStr: '' };
         for (const d of dates) {
             const xp = Object.values(logs[d]).reduce((s,p) => s+p, 0);
-            if (xp > bestDay.value) bestDay = { value: xp, date: formatDate(d) };
+            if (xp > bestDay.value) bestDay = { value: xp, date: formatDate(d), dateStr: d };
         }
 
-        let bestWeek = { value: 0, date: '' };
+        // Best week — daily avg (total ÷ 7), rounded to 1 decimal
+        let bestWeek = { value: 0, date: '', monStr: '' };
         if (dates.length) {
-            // Collect all calendar weeks (Mon–Sun) that contain any logged date
-            const weekKeys = new Set();
-            for (const d of dates) {
-                const dt = new Date(d + 'T00:00:00');
-                const dow = dt.getDay(); // 0=Sun,1=Mon...6=Sat
-                const monday = new Date(dt);
-                monday.setDate(dt.getDate() - ((dow + 6) % 7)); // shift to Monday
-                weekKeys.add(localDateStr(monday));
-            }
+            const weekKeys = new Set(dates.map(d => getMondayStr(d)));
             for (const monStr of weekKeys) {
-                const monday = new Date(monStr + 'T00:00:00');
-                let wXP = 0;
-                for (let i = 0; i < 7; i++) {
-                    const dd = new Date(monday); dd.setDate(monday.getDate() + i);
-                    wXP += Object.values(logs[localDateStr(dd)] || {}).reduce((s,p)=>s+p,0);
-                }
-                if (wXP > bestWeek.value) {
-                    bestWeek = { value: wXP, date: `w/ ${formatDate(monStr)}` };
+                const avg = Math.round(weekXP(logs, monStr) / 7 * 10) / 10;
+                if (avg > bestWeek.value) {
+                    bestWeek = { value: avg, date: `w/ ${formatDate(monStr)}`, monStr };
                 }
             }
         }
 
-        let bestMonth = { value: 0, date: '' };
-        const months = {};
-        for (const d of dates) {
-            const mk = d.slice(0,7);
-            months[mk] = (months[mk] || 0) + Object.values(logs[d]).reduce((s,p)=>s+p,0);
-        }
-        for (const [mk, xp] of Object.entries(months)) {
-            if (xp > bestMonth.value) {
+        // Best month — daily avg (total ÷ days in month), rounded to 1 decimal
+        let bestMonth = { value: 0, date: '', monthKey: '' };
+        const monthKeys = new Set(dates.map(d => d.slice(0,7)));
+        for (const mk of monthKeys) {
+            const [y, m] = mk.split('-').map(Number);
+            const days = daysInMonth(y, m - 1);
+            const avg = Math.round(monthXP(logs, mk) / days * 10) / 10;
+            if (avg > bestMonth.value) {
                 const dd = new Date(mk + '-01T00:00:00');
-                bestMonth = { value: xp, date: dd.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) };
+                bestMonth = { value: avg, date: dd.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), monthKey: mk };
             }
         }
+
         return { bestDay, bestWeek, bestMonth };
     }
 
@@ -1143,6 +1214,10 @@
         const rec = calcAllTimeRecords(logs);
         const rankingHTML = buildBehaviorRanking(logs, behaviors, categories);
 
+        const trophyDay   = sessionRecords.day   ? '<div class="record-trophy">🏆 New record</div>' : '';
+        const trophyWeek  = sessionRecords.week  ? '<div class="record-trophy">🏆 New record</div>' : '';
+        const trophyMonth = sessionRecords.month ? '<div class="record-trophy">🏆 New record</div>' : '';
+
         let html = `
             <div class="card">
                 <div class="card-header"><span class="card-title">All-time records</span></div>
@@ -1151,16 +1226,19 @@
                         <div class="record-val">${rec.bestDay.value}</div>
                         <div class="record-sub">Best day</div>
                         <div class="record-date">${rec.bestDay.date || '—'}</div>
+                        ${trophyDay}
                     </div>
                     <div class="record-cell">
                         <div class="record-val">${rec.bestWeek.value}</div>
-                        <div class="record-sub">Best week</div>
+                        <div class="record-sub">Best week avg</div>
                         <div class="record-date">${rec.bestWeek.date || '—'}</div>
+                        ${trophyWeek}
                     </div>
                     <div class="record-cell">
                         <div class="record-val">${rec.bestMonth.value}</div>
-                        <div class="record-sub">Best month</div>
+                        <div class="record-sub">Best month avg</div>
                         <div class="record-date">${rec.bestMonth.date || '—'}</div>
+                        ${trophyMonth}
                     </div>
                 </div>
             </div>
@@ -1215,38 +1293,51 @@
                     xp += Object.values(logs[localDateStr(d)] || {}).reduce((s,p)=>s+p,0);
                 }
                 const label = monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                data.push({ label, value: xp, isToday: i === 0 });
+                data.push({ label, value: xp, isToday: i === 0, daysInMonth: 7 });
             }
         } else {
             for (let i = 5; i >= 0; i--) {
                 const m = new Date(today.getFullYear(), today.getMonth() - i, 1);
                 const me = new Date(m.getFullYear(), m.getMonth()+1, 0);
+                const dim = me.getDate();
                 let xp = 0;
                 for (let d = new Date(m); d <= me; d.setDate(d.getDate()+1)) {
                     xp += Object.values(logs[localDateStr(d)] || {}).reduce((s,p)=>s+p,0);
                 }
-                data.push({ label: m.toLocaleDateString('en-US', { month: 'short' }), value: xp, isToday: i === 0 });
+                data.push({ label: m.toLocaleDateString('en-US', { month: 'short' }), value: xp, isToday: i === 0, daysInMonth: dim });
             }
         }
 
-        const maxVal = Math.max(...data.map(d=>d.value), 1);
-        const nonZero = data.filter(d => d.value > 0);
+        // For weekly/monthly charts, convert totals to daily averages
+        let displayData = data.map(d => {
+            if (currentAnalyticsView === 'weekly') {
+                return { ...d, display: d.value > 0 ? Math.round(d.value / 7 * 10) / 10 : 0 };
+            } else if (currentAnalyticsView === 'monthly') {
+                return { ...d, display: d.value > 0 ? Math.round(d.value / d.daysInMonth * 10) / 10 : 0 };
+            } else {
+                return { ...d, display: d.value };
+            }
+        });
+
+        const maxVal = Math.max(...displayData.map(d=>d.display), 1);
+        const nonZero = displayData.filter(d => d.display > 0);
         const avg = nonZero.length > 0
-            ? Math.round(nonZero.reduce((s,d) => s + d.value, 0) / nonZero.length)
+            ? Math.round(nonZero.reduce((s,d) => s + d.display, 0) / nonZero.length * 10) / 10
             : 0;
 
-        let bars = data.map(d => {
-            const h = Math.round((d.value / maxVal) * 100);
+        let bars = displayData.map(d => {
+            const h = Math.round((d.display / maxVal) * 100);
             const cls = d.isToday ? 'today-bar' : '';
+            const label = d.display > 0 ? d.display : '';
             return `<div class="bar-col">
-                <div class="bar-val">${d.value > 0 ? d.value : ''}</div>
+                <div class="bar-val">${label}</div>
                 <div class="bar-fill ${cls}" style="height:${h}%"></div>
             </div>`;
         }).join('');
 
-        let labels = data.map(d => `<div class="bar-label">${d.label}</div>`).join('');
+        let labels = displayData.map(d => `<div class="bar-label">${d.label}</div>`).join('');
 
-        const avgLabel = { daily: '7-day avg', weekly: '8-week avg', monthly: '6-month avg' }[currentAnalyticsView];
+        const avgLabel = { daily: '7-day avg', weekly: '8-week daily avg', monthly: '6-mo daily avg' }[currentAnalyticsView];
 
         return `<div class="chart-area">
             <div class="bars-wrap">${bars}</div>
@@ -1439,6 +1530,7 @@
         let html = '';
         for (const cat of categories) {
             const catBehaviors = behaviors[cat] || [];
+            const n = catBehaviors.length;
             html += `<div class="section-label" style="display:flex;justify-content:space-between;align-items:center;">
                 <span>${cat}</span>
                 <div style="display:flex;gap:10px;">
@@ -1447,24 +1539,72 @@
                 </div>
             </div>`;
             html += `<div class="card">`;
-            if (catBehaviors.length === 0) {
+            if (n === 0) {
                 html += `<div class="empty-state" style="padding:20px">No habits yet</div>`;
             }
-            for (const b of catBehaviors) {
+            catBehaviors.forEach((b, idx) => {
                 html += `<div class="beh-manage-row">
+                    <div style="display:flex;flex-direction:column;gap:3px;margin-right:6px;">
+                        <button class="reorder-btn" ${idx === 0 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},-1)">
+                            <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+                        </button>
+                        <button class="reorder-btn" ${idx === n-1 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},1)">
+                            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                    </div>
                     <span class="beh-manage-name">${b.name}</span>
                     <span class="beh-manage-pts">+${b.points} XP</span>
+                    <button class="edit-btn" style="margin-right:4px;" onclick="openEditBehavior('${cat}','${b.id}')">Edit</button>
                     <button class="del-btn" onclick="deleteBehavior('${cat}','${b.id}')">
                         <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>`;
-            }
+            });
             html += `</div>`;
         }
 
         html += `<button class="settings-btn" style="margin-top:4px;" onclick="openAddCategory()">+ Add category</button>`;
 
         document.getElementById('view-behaviors').innerHTML = html;
+    }
+
+    function moveBehavior(cat, idx, dir) {
+        const behaviors = getBehaviors();
+        const arr = behaviors[cat];
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= arr.length) return;
+        [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+        saveBehaviors(behaviors);
+        renderBehaviors();
+    }
+
+    function openEditBehavior(cat, id) {
+        const behaviors = getBehaviors();
+        const b = (behaviors[cat] || []).find(x => x.id === id);
+        if (!b) return;
+        document.getElementById('inp-edit-beh-name').value = b.name;
+        document.getElementById('inp-edit-beh-pts').value = b.points;
+        document.getElementById('inp-edit-beh-id').value = id;
+        document.getElementById('inp-edit-beh-cat').value = cat;
+        document.getElementById('modal-edit-behavior').classList.add('active');
+        setTimeout(() => document.getElementById('inp-edit-beh-name').focus(), 100);
+    }
+
+    function saveEditBehavior() {
+        const name = document.getElementById('inp-edit-beh-name').value.trim();
+        const pts = parseInt(document.getElementById('inp-edit-beh-pts').value);
+        const id = document.getElementById('inp-edit-beh-id').value;
+        const cat = document.getElementById('inp-edit-beh-cat').value;
+        if (!name || !pts || pts <= 0) { alert('Please enter a name and valid points.'); return; }
+        const behaviors = getBehaviors();
+        const b = (behaviors[cat] || []).find(x => x.id === id);
+        if (!b) return;
+        b.name = name;
+        b.points = pts;
+        saveBehaviors(behaviors);
+        closeModal('modal-edit-behavior');
+        renderBehaviors();
+        if (currentTab === 'today') renderToday();
     }
 
     function openAddBehavior(cat) {
@@ -1533,6 +1673,8 @@
         const daysLogged = Object.keys(logs).length;
         const totalXP = Object.values(logs).reduce((s, dl) => s + Object.values(dl).reduce((a,p)=>a+p,0), 0);
 
+        const rewards = getRewards();
+
         document.getElementById('view-settings').innerHTML = `
             <div class="card">
                 <div class="card-header"><span class="card-title">Your data</span></div>
@@ -1558,6 +1700,32 @@
             </div>
 
             <div class="card">
+                <div class="card-header"><span class="card-title">Rewards</span></div>
+                <div style="padding:6px 18px 4px;font-size:11px;color:var(--text-3);line-height:1.5;">
+                    Enter what you'll treat yourself to when each milestone is hit.
+                </div>
+                <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+                    <div class="setting-label">🏅 Best day record</div>
+                    <input class="form-input" style="margin:0;" id="inp-reward-day" type="text" placeholder="e.g. Nice dinner out" value="${rewards.day || ''}">
+                </div>
+                <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+                    <div class="setting-label">📅 Best week avg record</div>
+                    <input class="form-input" style="margin:0;" id="inp-reward-week" type="text" placeholder="e.g. Cinema night" value="${rewards.week || ''}">
+                </div>
+                <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+                    <div class="setting-label">📆 Best month avg record</div>
+                    <input class="form-input" style="margin:0;" id="inp-reward-month" type="text" placeholder="e.g. Weekend trip" value="${rewards.month || ''}">
+                </div>
+                <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none;">
+                    <div class="setting-label">🎯 Week avg above daily goal</div>
+                    <input class="form-input" style="margin:0;" id="inp-reward-goal" type="text" placeholder="e.g. New book" value="${rewards.goal || ''}">
+                </div>
+                <div style="padding:4px 18px 16px;">
+                    <button class="btn-save" style="width:100%;padding:11px;" onclick="saveRewardSettings()">Save rewards</button>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-header"><span class="card-title">Backup</span></div>
                 <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;">
                     <button class="settings-btn" onclick="exportData()">Export JSON backup</button>
@@ -1571,6 +1739,130 @@
         `;
     }
 
+
+    function saveRewardSettings() {
+        saveRewards({
+            day:   document.getElementById('inp-reward-day').value.trim(),
+            week:  document.getElementById('inp-reward-week').value.trim(),
+            month: document.getElementById('inp-reward-month').value.trim(),
+            goal:  document.getElementById('inp-reward-goal').value.trim(),
+        });
+        // Brief visual feedback
+        const btn = document.querySelector('#view-settings .btn-save');
+        if (btn) { const orig = btn.textContent; btn.textContent = 'Saved ✓'; setTimeout(() => btn.textContent = orig, 1500); }
+    }
+
+    // ── TOAST ────────────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(title, lines) {
+        const t = document.getElementById('reward-toast');
+        document.getElementById('reward-toast-title').textContent = title;
+        document.getElementById('reward-toast-body').innerHTML = lines.join('<br>');
+        t.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 4500);
+    }
+
+    // ── REWARD CHECKING ──────────────────────────────────────────────
+    function checkRewards(logs) {
+        const today = new Date();
+        const todayStr = getTodayStr();
+        const dow = today.getDay(); // 0=Sun
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+        const isSunday = dow === 0;
+        const isLastDayOfMonth = today.getDate() === lastDayOfMonth;
+
+        const fired = getFired();
+        const rewards = getRewards();
+        const rec = calcAllTimeRecords(logs);
+        const goal = getDailyGoal();
+
+        // Today's XP
+        const todayXP = Object.values(logs[todayStr] || {}).reduce((s,p)=>s+p,0);
+
+        const triggered = [];
+
+        // ── Best Day record ──────────────────────────────────────────
+        if (fired.day !== todayStr && todayXP > 0) {
+            // Check if today beats the all-time best day
+            // re-calc bestDay excluding today to compare
+            const bestDayExcluding = Object.keys(logs)
+                .filter(d => d !== todayStr)
+                .reduce((best, d) => {
+                    const xp = Object.values(logs[d]).reduce((s,p)=>s+p,0);
+                    return xp > best ? xp : best;
+                }, 0);
+            if (todayXP > bestDayExcluding) {
+                fired.day = todayStr;
+                sessionRecords.day = true;
+                triggered.push({ label: '🏅 New best day!', sub: `${todayXP} XP`, reward: rewards.day });
+            }
+        }
+
+        // ── Best Week avg record (trigger on Sunday) ─────────────────
+        if (isSunday) {
+            const monStr = getMondayStr(todayStr);
+            if (fired.week !== monStr) {
+                const curWeekAvg = Math.round(weekXP(logs, monStr) / 7 * 10) / 10;
+                // best week excluding current week
+                const allWeeks = new Set(Object.keys(logs).filter(d=>d!==todayStr).map(d=>getMondayStr(d)));
+                const bestExcl = [...allWeeks].reduce((best, ms) => {
+                    const avg = Math.round(weekXP(logs, ms) / 7 * 10) / 10;
+                    return avg > best ? avg : best;
+                }, 0);
+                if (curWeekAvg > bestExcl) {
+                    fired.week = monStr;
+                    sessionRecords.week = true;
+                    triggered.push({ label: '📅 New best week avg!', sub: `${curWeekAvg} XP/day`, reward: rewards.week });
+                }
+            }
+        }
+
+        // ── Best Month avg record (trigger on last day of month) ──────
+        if (isLastDayOfMonth) {
+            const mk = todayStr.slice(0,7);
+            if (fired.month !== mk) {
+                const [y, m] = mk.split('-').map(Number);
+                const dim = new Date(y, m, 0).getDate();
+                const curMonthAvg = Math.round(monthXP(logs, mk) / dim * 10) / 10;
+                const allMonths = new Set(Object.keys(logs).filter(d=>!d.startsWith(mk)).map(d=>d.slice(0,7)));
+                const bestExcl = [...allMonths].reduce((best, mkey) => {
+                    const [yy, mm] = mkey.split('-').map(Number);
+                    const dd = new Date(yy, mm, 0).getDate();
+                    const avg = Math.round(monthXP(logs, mkey) / dd * 10) / 10;
+                    return avg > best ? avg : best;
+                }, 0);
+                if (curMonthAvg > bestExcl) {
+                    fired.month = mk;
+                    sessionRecords.month = true;
+                    triggered.push({ label: '📆 New best month avg!', sub: `${curMonthAvg} XP/day`, reward: rewards.month });
+                }
+            }
+        }
+
+        // ── Weekly avg above daily goal (trigger on Sunday) ──────────
+        if (isSunday && goal > 0) {
+            const monStr = getMondayStr(todayStr);
+            const goalFiredKey = 'goal_' + monStr;
+            if (fired[goalFiredKey] !== true) {
+                const curWeekAvg = Math.round(weekXP(logs, monStr) / 7 * 10) / 10;
+                if (curWeekAvg >= goal) {
+                    fired[goalFiredKey] = true;
+                    triggered.push({ label: '🎯 Weekly goal crushed!', sub: `Avg ${curWeekAvg} XP/day ≥ target ${goal}`, reward: rewards.goal });
+                }
+            }
+        }
+
+        if (triggered.length > 0) {
+            saveFired(fired);
+            const lines = triggered.flatMap(t => {
+                const arr = [`<strong>${t.label}</strong> ${t.sub}`];
+                if (t.reward) arr.push(`🎁 ${t.reward}`);
+                return arr;
+            });
+            showToast('You earned a reward!', lines);
+        }
+    }
     function saveGoal() {
         const v = parseInt(document.getElementById('inp-goal').value) || 0;
         saveDailyGoal(v);
@@ -1593,6 +1885,8 @@
         localStorage.removeItem('xp_behaviors');
         localStorage.removeItem('xp_logs');
         localStorage.removeItem('xp_categories');
+        localStorage.removeItem('xp_rewards');
+        localStorage.removeItem('xp_reward_fired');
         renderSettings();
         renderToday();
     }
