@@ -1794,7 +1794,6 @@
 
         const fired = getFired();
         const rewards = getRewards();
-        const rec = calcAllTimeRecords(logs);
         const goal = getDailyGoal();
 
         // Today's XP
@@ -1803,20 +1802,19 @@
         const triggered = [];
 
         // ── Best Day record ──────────────────────────────────────────
-        if (fired.day !== todayStr && todayXP > 0) {
-            // Check if today beats the all-time best day
-            // re-calc bestDay excluding today to compare
-            const bestDayExcluding = Object.keys(logs)
-                .filter(d => d !== todayStr)
-                .reduce((best, d) => {
-                    const xp = Object.values(logs[d]).reduce((s,p)=>s+p,0);
-                    return xp > best ? xp : best;
-                }, 0);
-            if (todayXP > bestDayExcluding) {
-                fired.day = todayStr;
-                sessionRecords.day = true;
-                triggered.push({ label: '🏅 New best day!', sub: `${todayXP} XP`, reward: rewards.day });
-            }
+        // Only fires once per day AND only when record is actually broken.
+        // Key insight: check record first, THEN check fired flag — so a
+        // stale fired flag from a day that didn't break the record doesn't block.
+        const bestDayExcluding = Object.keys(logs)
+            .filter(d => d !== todayStr)
+            .reduce((best, d) => {
+                const xp = Object.values(logs[d]).reduce((s,p)=>s+p,0);
+                return xp > best ? xp : best;
+            }, 0);
+        if (todayXP > bestDayExcluding && fired.day !== todayStr) {
+            fired.day = todayStr;
+            sessionRecords.day = true;
+            triggered.push({ label: '🏅 New best day!', sub: `${todayXP} XP`, reward: rewards.day });
         }
 
         // ── Best Week avg record (trigger on Sunday) ─────────────────
@@ -1824,8 +1822,12 @@
             const monStr = getMondayStr(todayStr);
             if (fired.week !== monStr) {
                 const curWeekAvg = Math.round(weekXP(logs, monStr) / 7 * 10) / 10;
-                // best week excluding current week
-                const allWeeks = new Set(Object.keys(logs).filter(d=>d!==todayStr).map(d=>getMondayStr(d)));
+                // Exclude the current week's Monday from comparison set
+                const allWeeks = new Set(
+                    Object.keys(logs)
+                        .map(d => getMondayStr(d))
+                        .filter(ms => ms !== monStr)
+                );
                 const bestExcl = [...allWeeks].reduce((best, ms) => {
                     const avg = Math.round(weekXP(logs, ms) / 7 * 10) / 10;
                     return avg > best ? avg : best;
@@ -1845,7 +1847,11 @@
                 const [y, m] = mk.split('-').map(Number);
                 const dim = new Date(y, m, 0).getDate();
                 const curMonthAvg = Math.round(monthXP(logs, mk) / dim * 10) / 10;
-                const allMonths = new Set(Object.keys(logs).filter(d=>!d.startsWith(mk)).map(d=>d.slice(0,7)));
+                const allMonths = new Set(
+                    Object.keys(logs)
+                        .map(d => d.slice(0,7))
+                        .filter(mkey => mkey !== mk)
+                );
                 const bestExcl = [...allMonths].reduce((best, mkey) => {
                     const [yy, mm] = mkey.split('-').map(Number);
                     const dd = new Date(yy, mm, 0).getDate();
@@ -1953,6 +1959,18 @@
             const behaviors = getBehaviors();
             const fromBehaviors = Object.keys(behaviors);
             saveCategories(fromBehaviors.length ? fromBehaviors : ['Fitness', 'Diet', 'Health', 'Productivity', 'Relationships']);
+        }
+        // Reset fired.day on each app load so the best-day check always
+        // re-evaluates honestly. The toast only fires once per day because
+        // fired.day gets written back the moment the record is broken.
+        const fired = getFired();
+        const todayStr = getTodayStr();
+        if (fired.day === todayStr) {
+            // Keep it — record was already awarded today, don't re-trigger
+        } else {
+            // Clear any stale day from a previous day
+            delete fired.day;
+            saveFired(fired);
         }
         renderToday();
     })();
