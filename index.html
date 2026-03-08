@@ -517,16 +517,18 @@
 
         .beh-manage-row {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             padding: 11px 18px;
             border-bottom: 1px solid var(--border);
-            gap: 10px;
+            gap: 7px;
         }
 
         .beh-manage-row:last-child { border-bottom: none; }
 
+        .beh-manage-top { display: flex; align-items: center; gap: 8px; }
         .beh-manage-name { flex: 1; font-size: 14px; color: var(--text); }
         .beh-manage-pts { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-3); }
+        .beh-manage-actions { display: flex; align-items: center; gap: 6px; }
 
         .del-btn {
             width: 26px;
@@ -1544,20 +1546,22 @@
             }
             catBehaviors.forEach((b, idx) => {
                 html += `<div class="beh-manage-row">
-                    <div style="display:flex;flex-direction:column;gap:3px;margin-right:6px;">
+                    <div class="beh-manage-top">
+                        <span class="beh-manage-name">${b.name}</span>
+                        <span class="beh-manage-pts">+${b.points} XP</span>
+                    </div>
+                    <div class="beh-manage-actions">
                         <button class="reorder-btn" ${idx === 0 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},-1)">
                             <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
                         </button>
                         <button class="reorder-btn" ${idx === n-1 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},1)">
                             <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
                         </button>
+                        <button class="edit-btn" onclick="openEditBehavior('${cat}','${b.id}')">Edit</button>
+                        <button class="del-btn" onclick="deleteBehavior('${cat}','${b.id}')">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
                     </div>
-                    <span class="beh-manage-name">${b.name}</span>
-                    <span class="beh-manage-pts">+${b.points} XP</span>
-                    <button class="edit-btn" style="margin-right:4px;" onclick="openEditBehavior('${cat}','${b.id}')">Edit</button>
-                    <button class="del-btn" onclick="deleteBehavior('${cat}','${b.id}')">
-                        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
                 </div>`;
             });
             html += `</div>`;
