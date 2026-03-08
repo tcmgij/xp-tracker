@@ -772,6 +772,26 @@
             font-size: 14px;
             line-height: 1.6;
         }
+
+        /* ── REORDER BUTTONS ── */
+        .reorder-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            line-height: 1;
+            color: var(--text-2);
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .reorder-btn:disabled { opacity: 0.25; cursor: default; }
+
     </style>
 </head>
 <body>
@@ -1551,12 +1571,8 @@
                         <span class="beh-manage-pts">+${b.points} XP</span>
                     </div>
                     <div class="beh-manage-actions">
-                        <button class="reorder-btn" ${idx === 0 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},-1)">
-                            <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
-                        </button>
-                        <button class="reorder-btn" ${idx === n-1 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},1)">
-                            <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-                        </button>
+                        <button class="reorder-btn" ${idx === 0 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},-1)">▲</button>
+                        <button class="reorder-btn" ${idx === n-1 ? 'disabled' : ''} onclick="moveBehavior('${cat}',${idx},1)">▼</button>
                         <button class="edit-btn" onclick="openEditBehavior('${cat}','${b.id}')">Edit</button>
                         <button class="del-btn" onclick="deleteBehavior('${cat}','${b.id}')">
                             <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
