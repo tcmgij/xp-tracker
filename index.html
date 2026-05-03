@@ -1980,19 +1980,19 @@
         reader.onload = function(ev) {
             try {
                 const data = JSON.parse(ev.target.result);
-                if (data.behaviors && data.logs) {
-                    saveBehaviors(data.behaviors);
-                    saveLogs(data.logs);
-                    // If old backup had implicit categories, restore them
-                    if (!localStorage.getItem('xp_categories')) {
-                        saveCategories(Object.keys(data.behaviors));
+                if (data.behaviors !== undefined || data.logs !== undefined) {
+                    if (data.behaviors !== undefined) {
+                        saveBehaviors(data.behaviors);
+                        const catKeys = Object.keys(data.behaviors);
+                        if (catKeys.length > 0) saveCategories(catKeys);
                     }
+                    if (data.logs !== undefined) saveLogs(data.logs);
                     if (data.dailyGoal !== undefined) saveDailyGoal(data.dailyGoal);
-                    if (data.rewards) saveRewards(data.rewards);
+                    if (data.rewards !== undefined) saveRewards(data.rewards);
                     alert('Imported successfully.');
                     renderSettings();
                     renderToday();
-                } else { alert('Invalid backup file.'); }
+                } else { alert('Invalid backup file. No recognizable data found.'); }
             } catch(err) { alert('Error: ' + err.message); }
         };
         reader.readAsText(file);
