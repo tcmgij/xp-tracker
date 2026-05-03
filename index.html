@@ -1954,7 +1954,7 @@
     }
 
     function exportData() {
-        const data = { behaviors: getBehaviors(), logs: getLogs(), exportDate: new Date().toISOString() };
+        const data = { behaviors: getBehaviors(), logs: getLogs(), dailyGoal: getDailyGoal(), rewards: getRewards(), exportDate: new Date().toISOString() };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1987,6 +1987,8 @@
                     if (!localStorage.getItem('xp_categories')) {
                         saveCategories(Object.keys(data.behaviors));
                     }
+                    if (data.dailyGoal !== undefined) saveDailyGoal(data.dailyGoal);
+                    if (data.rewards) saveRewards(data.rewards);
                     alert('Imported successfully.');
                     renderSettings();
                     renderToday();
